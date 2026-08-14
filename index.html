@@ -1,271 +1,348 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Company Dinner Registration</title>
+    <title>年度員工聚餐報名表</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Tailwind gray-100 */
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
         }
-        /* Custom styles for toast notifications */
-        .toast {
-            visibility: hidden;
-            min-width: 250px;
-            margin-left: -125px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 16px;
-            position: fixed;
-            z-index: 50;
-            left: 50%;
-            bottom: 30px;
-            font-size: 14px;
-            transition: visibility 0s, opacity 0.5s linear;
-            opacity: 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        /* Custom scrollbar for table */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-        .toast.show {
-            visibility: visible;
-            opacity: 1;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+            border-radius: 4px;
         }
-        .toast.success { background-color: #10B981; } /* Tailwind emerald-500 */
-        .toast.error { background-color: #EF4444; } /* Tailwind red-500 */
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        /* Toast animation */
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .toast-enter {
+            animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .toast-exit {
+            animation: fadeOut 0.3s ease forwards;
+        }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50 min-h-screen text-slate-800 flex items-center justify-center p-4 sm:p-8">
 
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden transition-all duration-300" id="mainContainer">
+    <div id="mainContainer" class="w-full max-w-xl bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden transition-all duration-500 relative flex flex-col">
         
-        <!-- Header Section -->
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-0 text-white text-center">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold mb-2">年度員工聚餐報名</h1>
-                <p class="text-blue-100 text-sm">請填寫以下資訊或查看名單</p>
-            </div>
-            
-            <div class="flex justify-center bg-indigo-800/30">
-                <button id="tabFormBtn" class="px-8 py-3 font-medium text-white border-b-2 border-white transition-colors cursor-pointer">報名表單</button>
-                <button id="tabRecordsBtn" class="px-8 py-3 font-medium text-indigo-200 border-b-2 border-transparent hover:text-white transition-colors cursor-pointer">報名名單 (管理員)</button>
+        <!-- Header Image / Banner Area -->
+        <div class="h-32 bg-gradient-to-r from-indigo-600 to-violet-600 relative flex items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+            <div class="relative z-10 text-center">
+                <h1 class="text-3xl font-bold text-white tracking-wide flex items-center justify-center gap-3 shadow-sm">
+                    <i class="ph ph-fork-knife text-4xl"></i>
+                    年度員工聚餐
+                </h1>
+                <p class="text-indigo-100 mt-2 font-medium tracking-wider text-sm">2026 Company Dinner Event</p>
             </div>
         </div>
 
-        <!-- Content Area -->
-        <div class="relative">
-            <!-- Form Section -->
-            <div id="formSection" class="p-6 md:p-8 max-w-md mx-auto block">
-                <form id="registrationForm" novalidate>
-                    <div class="space-y-4 mb-6">
-                        <div>
-                            <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">姓名 <span class="text-red-500">*</span></label>
-                            <input type="text" id="fullName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="例如：王大明">
-                            <p id="fullNameError" class="text-red-500 text-xs mt-1 hidden">請輸入姓名</p>
+        <!-- Custom Tabs -->
+        <div class="px-6 pt-6 pb-2">
+            <div class="flex p-1.5 bg-slate-100/80 rounded-2xl">
+                <button id="tabFormBtn" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-300 bg-white text-indigo-600 shadow-sm flex items-center justify-center gap-2">
+                    <i class="ph ph-note-pencil text-lg"></i> 報名表單
+                </button>
+                <button id="tabRecordsBtn" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-300 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 flex items-center justify-center gap-2">
+                    <i class="ph ph-users text-lg"></i> 報名名單
+                </button>
+            </div>
+        </div>
+
+        <!-- Form Section -->
+        <div id="formSection" class="p-6 sm:px-10 pb-10 transition-opacity duration-300">
+            <form id="registrationForm" class="space-y-6">
+                
+                <!-- Input Group: Name -->
+                <div class="space-y-1.5">
+                    <label for="fullName" class="block text-sm font-semibold text-slate-700">姓名 Full Name</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                            <i class="ph ph-user text-xl"></i>
                         </div>
-                        <div>
-                            <label for="department" class="block text-sm font-medium text-gray-700 mb-1">部門 <span class="text-red-500">*</span></label>
-                            <select id="department" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white">
-                                <option value="">請選擇部門</option>
-                                <option value="IT">資訊部 (IT)</option>
-                                <option value="HR">人資部 (HR)</option>
-                                <option value="Sales">業務部 (Sales)</option>
-                                <option value="Marketing">行銷部 (Marketing)</option>
-                                <option value="Finance">財務部 (Finance)</option>
-                            </select>
-                            <p id="departmentError" class="text-red-500 text-xs mt-1 hidden">請選擇部門</p>
+                        <input type="text" id="fullName" required class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all duration-200 text-slate-700 placeholder-slate-400" placeholder="請輸入真實姓名">
+                    </div>
+                </div>
+
+                <!-- Input Group: Department -->
+                <div class="space-y-1.5">
+                    <label for="department" class="block text-sm font-semibold text-slate-700">所屬部門 Department</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                            <i class="ph ph-buildings text-xl"></i>
                         </div>
-                        <div>
-                            <label for="employeeId" class="block text-sm font-medium text-gray-700 mb-1">員工編號 <span class="text-red-500">*</span></label>
-                            <input type="text" id="employeeId" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="例如：EMP001">
-                            <p id="employeeIdError" class="text-red-500 text-xs mt-1 hidden">請輸入員工編號</p>
-                        </div>
-                        <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">電子郵件 <span class="text-red-500">*</span></label>
-                            <input type="email" id="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="your.email@company.com">
-                            <p id="emailError" class="text-red-500 text-xs mt-1 hidden">請輸入有效的電子郵件格式</p>
+                        <select id="department" required class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all duration-200 text-slate-700 appearance-none cursor-pointer">
+                            <option value="" disabled selected class="text-slate-400">請選擇部門</option>
+                            <option value="管理部">管理部</option>
+                            <option value="人資部">人資部</option>
+                            <option value="財務部">財務部</option>
+                            <option value="資訊部 (IT)">資訊部 (IT)</option>
+                            <option value="業務部">業務部</option>
+                            <option value="行銷部">行銷部</option>
+                            <option value="研發部">研發部</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
+                            <i class="ph ph-caret-down text-lg"></i>
                         </div>
                     </div>
+                </div>
 
-                    <button type="submit" id="submitBtn"
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex justify-center items-center">
-                        <span>確認報名</span>
-                        <svg id="loadingSpinner" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </button>
-                </form>
-            </div>
-            
-            <!-- Records Section -->
-            <div id="recordsSection" class="p-6 md:p-8 hidden">
-                <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    <h2 class="text-xl font-bold text-gray-800">已報名員工名單</h2>
-                    <button id="downloadCsvBtn" type="button" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow transition-colors flex items-center text-sm font-medium">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        下載 CSV 明細
+                <!-- Input Group: Employee ID -->
+                <div class="space-y-1.5">
+                    <label for="employeeId" class="block text-sm font-semibold text-slate-700">員工編號 Employee ID</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                            <i class="ph ph-identification-badge text-xl"></i>
+                        </div>
+                        <input type="text" id="employeeId" required pattern="[a-zA-Z0-9]+" class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all duration-200 text-slate-700 placeholder-slate-400" placeholder="例如: EMP1234">
+                    </div>
+                </div>
+
+                <!-- Input Group: Email -->
+                <div class="space-y-1.5">
+                    <label for="email" class="block text-sm font-semibold text-slate-700">聯絡信箱 Email</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                            <i class="ph ph-envelope-simple text-xl"></i>
+                        </div>
+                        <input type="email" id="email" required class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all duration-200 text-slate-700 placeholder-slate-400" placeholder="your.name@company.com">
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-4">
+                    <button type="submit" id="submitBtn" class="w-full relative group overflow-hidden rounded-xl p-[1px] transition-all duration-300">
+                        <span class="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-xl opacity-80 group-hover:opacity-100 transition-opacity duration-300"></span>
+                        <div class="relative bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transform transition-transform duration-200 shadow-lg group-hover:shadow-indigo-500/30">
+                            <i id="submitSpinner" class="ph ph-spinner-gap animate-spin hidden text-xl"></i>
+                            <span id="submitBtnText" class="font-bold tracking-wide">確認報名 Submit</span>
+                            <i class="ph ph-arrow-right text-lg group-hover:translate-x-1 transition-transform"></i>
+                        </div>
                     </button>
                 </div>
-                
-                <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
+            </form>
+        </div>
+
+        <!-- Records Section (Hidden by default) -->
+        <div id="recordsSection" class="hidden p-6 sm:px-10 pb-10 transition-opacity duration-300 flex-col h-[600px] max-h-[80vh]">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i class="ph ph-clipboard-text text-indigo-600"></i>
+                        報名明細表
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">目前共 <span id="totalCount" class="font-bold text-indigo-600 px-1">0</span> 人完成報名</p>
+                </div>
+                <button id="downloadCsvBtn" class="px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 border border-emerald-200">
+                    <i class="ph ph-download-simple text-lg"></i>
+                    匯出 CSV
+                </button>
+            </div>
+
+            <!-- Beautiful Table -->
+            <div class="flex-1 overflow-hidden border border-slate-200 rounded-2xl flex flex-col bg-white">
+                <div class="overflow-x-auto flex-1 custom-scrollbar">
                     <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-50 text-gray-700 text-sm border-b border-gray-200">
-                                <th class="p-4 font-semibold whitespace-nowrap">姓名</th>
-                                <th class="p-4 font-semibold whitespace-nowrap">部門</th>
-                                <th class="p-4 font-semibold whitespace-nowrap">員工編號</th>
-                                <th class="p-4 font-semibold whitespace-nowrap">Email</th>
-                                <th class="p-4 font-semibold whitespace-nowrap">報名時間</th>
+                        <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                            <tr>
+                                <th class="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">報名時間</th>
+                                <th class="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">姓名</th>
+                                <th class="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">部門</th>
+                                <th class="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">員工編號</th>
+                                <th class="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Email</th>
                             </tr>
                         </thead>
-                        <tbody id="recordsTableBody" class="text-sm text-gray-600 divide-y divide-gray-200">
-                            <!-- Records will be injected here -->
-                            <tr>
-                                <td colspan="5" class="p-8 text-center text-gray-400">載入中...</td>
-                            </tr>
+                        <tbody id="recordsTableBody" class="divide-y divide-slate-100">
+                            <!-- Data rows will be injected here -->
+                            <tr><td colspan="5" class="px-5 py-10 text-center text-slate-400"><i class="ph ph-spinner-gap animate-spin text-2xl mb-2"></i><br>載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <div class="mt-4 text-right text-sm text-gray-500">
-                    總計報名人數：<span id="totalCount" class="font-bold text-indigo-600">0</span> 人
-                </div>
             </div>
         </div>
-        
+
         <!-- Footer info -->
-        <div class="bg-gray-50 p-4 border-t border-gray-100 text-center text-xs text-gray-500">
-            有任何問題請聯繫 HR 部門 (#1234)
+        <div class="bg-slate-50/50 p-4 border-t border-slate-100 text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-1.5">
+            <i class="ph ph-info text-sm"></i> 有任何問題請聯繫 HR 部門 (#1234)
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-all duration-300">
+        <div class="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-sm transform scale-95 transition-all duration-300" id="adminModalContent">
+            
+            <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 shadow-sm">
+                <i class="ph ph-lock-key text-3xl"></i>
+            </div>
+            
+            <h3 class="text-xl font-bold text-slate-800 mb-2">管理員驗證</h3>
+            <p class="text-sm text-slate-500 mb-6">為保護隱私，請輸入管理員專屬編號以查看報名名單。</p>
+            
+            <div class="space-y-2">
+                <div class="relative">
+                    <i class="ph ph-password absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                    <input type="password" id="adminIdInput" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all duration-200 text-slate-700" placeholder="請輸入編號 (提示: 99999)">
+                </div>
+                <p id="adminError" class="text-rose-500 text-xs hidden flex items-center gap-1 mt-2">
+                    <i class="ph ph-warning-circle"></i> 編號錯誤，請重新輸入
+                </p>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-8">
+                <button id="cancelAdminBtn" class="px-5 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-sm font-bold cursor-pointer">取消</button>
+                <button id="verifyAdminBtn" class="px-5 py-2.5 text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30 rounded-xl transition-all text-sm font-bold cursor-pointer">確認驗證</button>
+            </div>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="toast">Message goes here</div>
+    <div id="toastContainer" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center pointer-events-none">
+        <!-- Toasts injected here -->
+    </div>
 
+    <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Environment Variables setup
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'demo-app-id';
+            const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Initialize Firebase only if config is available
-        let app, db, auth;
-        if (Object.keys(firebaseConfig).length > 0) {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-        }
+            let db = null;
+            let auth = null;
+            let app = null;
+            let user = null;
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const form = document.getElementById('registrationForm');
-            const submitBtn = document.getElementById('submitBtn');
-            const submitText = submitBtn.querySelector('span');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const toast = document.getElementById('toast');
+            if (firebaseConfigStr) {
+                try {
+                    const firebaseConfig = JSON.parse(firebaseConfigStr);
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                } catch (e) {
+                    console.error("Firebase config parsing error:", e);
+                }
+            }
 
+            // DOM Elements
             const mainContainer = document.getElementById('mainContainer');
             const tabFormBtn = document.getElementById('tabFormBtn');
             const tabRecordsBtn = document.getElementById('tabRecordsBtn');
             const formSection = document.getElementById('formSection');
             const recordsSection = document.getElementById('recordsSection');
+            const form = document.getElementById('registrationForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const submitSpinner = document.getElementById('submitSpinner');
+            const submitBtnText = document.getElementById('submitBtnText');
             const recordsTableBody = document.getElementById('recordsTableBody');
             const totalCount = document.getElementById('totalCount');
             const downloadCsvBtn = document.getElementById('downloadCsvBtn');
             
-            let registrationsData = []; // Store data in memory for CSV and rendering
+            // Admin Modal Elements
+            const adminModal = document.getElementById('adminModal');
+            const adminModalContent = document.getElementById('adminModalContent');
+            const adminIdInput = document.getElementById('adminIdInput');
+            const verifyAdminBtn = document.getElementById('verifyAdminBtn');
+            const cancelAdminBtn = document.getElementById('cancelAdminBtn');
+            const adminError = document.getElementById('adminError');
+            const toastContainer = document.getElementById('toastContainer');
 
-            // Form inputs
-            const inputs = {
-                fullName: document.getElementById('fullName'),
-                department: document.getElementById('department'),
-                employeeId: document.getElementById('employeeId'),
-                email: document.getElementById('email')
-            };
+            let registrationsData = []; 
+            let isAdmin = false;
+            let trackingInitialized = false;
 
-            // Error message elements
-            const errors = {
-                fullName: document.getElementById('fullNameError'),
-                department: document.getElementById('departmentError'),
-                employeeId: document.getElementById('employeeIdError'),
-                email: document.getElementById('emailError')
-            };
-
-            // Basic email validation regex
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            // Helper function to show error
-            const showError = (fieldId, show) => {
-                const inputElement = inputs[fieldId];
-                const errorElement = errors[fieldId];
-                
-                if (show) {
-                    inputElement.classList.add('border-red-500');
-                    inputElement.classList.remove('border-gray-300');
-                    errorElement.classList.remove('hidden');
-                } else {
-                    inputElement.classList.remove('border-red-500');
-                    inputElement.classList.add('border-gray-300');
-                    errorElement.classList.add('hidden');
-                }
-            };
-
-            // Validate the entire form
-            const validateForm = () => {
-                let isValid = true;
-
-                // Validate Full Name
-                if (!inputs.fullName.value.trim()) {
-                    showError('fullName', true);
-                    isValid = false;
-                } else {
-                    showError('fullName', false);
-                }
-
-                // Validate Department
-                if (!inputs.department.value) {
-                    showError('department', true);
-                    isValid = false;
-                } else {
-                    showError('department', false);
-                }
-
-                // Validate Employee ID
-                if (!inputs.employeeId.value.trim()) {
-                    showError('employeeId', true);
-                    isValid = false;
-                } else {
-                    showError('employeeId', false);
-                }
-
-                // Validate Email
-                if (!inputs.email.value.trim() || !emailRegex.test(inputs.email.value.trim())) {
-                    showError('email', true);
-                    isValid = false;
-                } else {
-                    showError('email', false);
-                }
-
-                return isValid;
-            };
-
-            // Show toast notification
+            // Beautiful Toast UI
             const showToast = (message, type = 'success') => {
-                toast.textContent = message;
-                toast.className = `toast show ${type}`;
+                const toast = document.createElement('div');
+                const isSuccess = type === 'success';
+                const icon = isSuccess ? '<i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i>' : '<i class="ph-fill ph-warning-circle text-rose-500 text-xl"></i>';
                 
+                toast.className = `toast-enter flex items-center gap-3 bg-white px-5 py-3.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 mt-3 pointer-events-auto max-w-sm w-max`;
+                toast.innerHTML = `
+                    ${icon}
+                    <span class="text-sm font-semibold text-slate-700">${message}</span>
+                `;
+                
+                toastContainer.appendChild(toast);
+
                 setTimeout(() => {
-                    toast.className = toast.className.replace('show', '');
+                    toast.classList.remove('toast-enter');
+                    toast.classList.add('toast-exit');
+                    setTimeout(() => toast.remove(), 300); // Wait for exit animation
                 }, 3000);
             };
 
-            let user = null;
+            const switchTab = (isForm) => {
+                if (isForm) {
+                    tabFormBtn.classList.replace('text-slate-500', 'text-indigo-600');
+                    tabFormBtn.classList.replace('hover:text-slate-700', 'bg-white');
+                    tabFormBtn.classList.add('shadow-sm');
+                    tabFormBtn.classList.remove('hover:bg-slate-200/50');
+                    
+                    tabRecordsBtn.classList.replace('text-indigo-600', 'text-slate-500');
+                    tabRecordsBtn.classList.replace('bg-white', 'hover:text-slate-700');
+                    tabRecordsBtn.classList.remove('shadow-sm');
+                    tabRecordsBtn.classList.add('hover:bg-slate-200/50');
+
+                    formSection.classList.remove('hidden');
+                    recordsSection.classList.add('hidden');
+                    
+                    mainContainer.classList.remove('max-w-4xl');
+                    mainContainer.classList.add('max-w-xl');
+                } else {
+                    tabRecordsBtn.classList.replace('text-slate-500', 'text-indigo-600');
+                    tabRecordsBtn.classList.replace('hover:text-slate-700', 'bg-white');
+                    tabRecordsBtn.classList.add('shadow-sm');
+                    tabRecordsBtn.classList.remove('hover:bg-slate-200/50');
+                    
+                    tabFormBtn.classList.replace('text-indigo-600', 'text-slate-500');
+                    tabFormBtn.classList.replace('bg-white', 'hover:text-slate-700');
+                    tabFormBtn.classList.remove('shadow-sm');
+                    tabFormBtn.classList.add('hover:bg-slate-200/50');
+
+                    formSection.classList.add('hidden');
+                    recordsSection.classList.remove('hidden');
+                    
+                    mainContainer.classList.remove('max-w-xl');
+                    mainContainer.classList.add('max-w-4xl');
+                }
+            };
+
+            const formatDate = (isoString) => {
+                const date = new Date(isoString);
+                return date.toLocaleString('zh-TW', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            };
+
             if (auth) {
                 try {
                     if (initialAuthToken) {
@@ -275,239 +352,193 @@
                         const userCredential = await signInAnonymously(auth);
                         user = userCredential.user;
                     }
-                    console.log("Firebase authenticated successfully");
-                    
-                    initRealTimeTracking();
                 } catch (error) {
                     console.error("Firebase authentication failed:", error);
                     showToast('系統連線異常，請稍後再試。', 'error');
                 }
-            } else {
-                 console.warn("Firebase config not found. Running in offline/demo mode.");
-                 // Demo data for offline mode
-                 renderTable([
-                     { fullName: '王大明', department: 'IT', employeeId: 'EMP001', email: 'daming@company.com', timestamp: new Date().toISOString() },
-                     { fullName: '林小美', department: 'HR', employeeId: 'EMP002', email: 'xiaomei@company.com', timestamp: new Date(Date.now() - 3600000).toISOString() }
-                 ]);
             }
 
-            // Handle form submission
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                
+                const submitData = {
+                    fullName: document.getElementById('fullName').value.trim(),
+                    department: document.getElementById('department').value,
+                    employeeId: document.getElementById('employeeId').value.trim().toUpperCase(),
+                    email: document.getElementById('email').value.trim(),
+                    timestamp: new Date().toISOString()
+                };
 
-                if (validateForm()) {
-                    // Set loading state
-                    submitBtn.disabled = true;
-                    submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
-                    submitText.textContent = '處理中...';
-                    loadingSpinner.classList.remove('hidden');
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
+                submitSpinner.classList.remove('hidden');
+                submitBtnText.textContent = '處理中...';
 
-                    // Collect data
-                    const formData = {
-                        fullName: inputs.fullName.value.trim(),
-                        department: inputs.department.value,
-                        employeeId: inputs.employeeId.value.trim(),
-                        email: inputs.email.value.trim(),
-                        timestamp: new Date().toISOString()
-                    };
-
-                    console.log('Registration Data collected:', formData);
-
+                try {
                     if (db && user) {
-                        try {
-                            // Using a 'registrations' collection under the app's public data path
-                            const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
-                            await addDoc(registrationsRef, formData);
-                            
-                            showToast('報名成功！期待您的參與。', 'success');
-                            form.reset();
-                        } catch (error) {
-                            console.error("Error writing document: ", error);
-                            showToast('報名失敗，請稍後再試或聯繫系統管理員。', 'error');
-                        } finally {
-                            // Reset button state
-                            submitBtn.disabled = false;
-                            submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
-                            submitText.textContent = '確認報名';
-                            loadingSpinner.classList.add('hidden');
-                        }
+                        const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
+                        await addDoc(registrationsRef, submitData);
                     } else {
-                        // Simulate delay for demo mode
-                        setTimeout(() => {
-                            submitBtn.disabled = false;
-                            submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
-                            submitText.textContent = '確認報名';
-                            loadingSpinner.classList.add('hidden');
-
-                            showToast('(展示模式) 報名成功！', 'success');
-                            form.reset();
-                        }, 1000);
+                        // Offline simulation
+                        await new Promise(resolve => setTimeout(resolve, 800));
+                        registrationsData.push(submitData);
+                        renderTable(registrationsData); 
                     }
-                } else {
-                    showToast('請檢查並填寫所有必填欄位', 'error');
+                    
+                    showToast('🎉 報名成功！期待您的參與！');
+                    form.reset();
+                } catch (error) {
+                    console.error("Error adding document: ", error);
+                    showToast('儲存失敗，請稍後再試。', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-80', 'cursor-not-allowed');
+                    submitSpinner.classList.add('hidden');
+                    submitBtnText.textContent = '確認報名 Submit';
                 }
             });
 
-            // Add real-time validation clearing when user types
-            Object.keys(inputs).forEach(key => {
-                inputs[key].addEventListener('input', () => {
-                    if (inputs[key].value.trim() !== '') {
-                        if (key === 'email' && !emailRegex.test(inputs[key].value.trim())) {
-                            // Don't clear error if email format is still invalid
-                            return; 
-                        }
-                        showError(key, false);
-                    }
-                });
-            });
+            const showAdminModal = () => {
+                adminModal.classList.remove('hidden');
+                setTimeout(() => {
+                    adminModal.classList.remove('opacity-0');
+                    adminModalContent.classList.remove('scale-95');
+                }, 10);
+                adminIdInput.value = '';
+                adminError.classList.add('hidden');
+                adminIdInput.focus();
+            };
 
-            
-            // Tab Switching Logic
-            const switchTab = (showForm) => {
-                if (showForm) {
-                    formSection.classList.remove('hidden');
-                    recordsSection.classList.add('hidden');
-                    // Update tabs styling
-                    tabFormBtn.classList.add('border-white', 'text-white');
-                    tabFormBtn.classList.remove('border-transparent', 'text-indigo-200');
-                    tabRecordsBtn.classList.add('border-transparent', 'text-indigo-200');
-                    tabRecordsBtn.classList.remove('border-white', 'text-white');
-                    
-                    // Collapse container slightly for form view
-                    mainContainer.classList.remove('max-w-4xl');
-                    mainContainer.classList.add('max-w-xl');
+            const hideAdminModal = () => {
+                adminModal.classList.add('opacity-0');
+                adminModalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    adminModal.classList.add('hidden');
+                }, 300);
+            };
+
+            const verifyAdmin = () => {
+                if (adminIdInput.value === '99999') {
+                    isAdmin = true;
+                    hideAdminModal();
+                    switchTab(false);
+                    if (!trackingInitialized) {
+                        initRealTimeTracking();
+                        trackingInitialized = true;
+                    }
                 } else {
-                    formSection.classList.add('hidden');
-                    recordsSection.classList.remove('hidden');
-                    // Update tabs styling
-                    tabRecordsBtn.classList.add('border-white', 'text-white');
-                    tabRecordsBtn.classList.remove('border-transparent', 'text-indigo-200');
-                    tabFormBtn.classList.add('border-transparent', 'text-indigo-200');
-                    tabFormBtn.classList.remove('border-white', 'text-white');
-                    
-                    // Expand container for table view
-                    mainContainer.classList.remove('max-w-xl');
-                    mainContainer.classList.add('max-w-4xl');
+                    adminError.classList.remove('hidden');
                 }
             };
 
-            tabFormBtn.addEventListener('click', () => switchTab(true));
-            tabRecordsBtn.addEventListener('click', () => switchTab(false));
-
-            // Setup Real-time listener
             function initRealTimeTracking() {
-                if (!db || !user) return;
+                if (!db || !user) {
+                    renderTable([
+                        { fullName: '王大明', department: '資訊部 (IT)', employeeId: 'EMP001', email: 'daming@company.com', timestamp: new Date().toISOString() },
+                        { fullName: '林小美', department: '人資部', employeeId: 'EMP002', email: 'xiaomei@company.com', timestamp: new Date(Date.now() - 3600000).toISOString() }
+                    ]);
+                    return;
+                }
                 
                 const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
-                
                 onSnapshot(registrationsRef, (snapshot) => {
-                    const data = [];
+                    registrationsData = [];
                     snapshot.forEach((doc) => {
-                        data.push({ id: doc.id, ...doc.data() });
+                        registrationsData.push({ id: doc.id, ...doc.data() });
                     });
                     
-                    // Sort in memory by timestamp descending (newest first)
-                    data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    registrationsData = data;
-                    renderTable(data);
+                    registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    renderTable(registrationsData);
                 }, (error) => {
-                    console.error("Error fetching registrations: ", error);
-                    showToast('無法取得報名名單。', 'error');
+                    console.error("Real-time tracking error:", error);
+                    showToast('無法取得最新名單', 'error');
                 });
             }
 
-            // Render Table function
-            function renderTable(data) {
-                registrationsData = data; // Keep a reference for CSV
+            const renderTable = (data) => {
                 totalCount.textContent = data.length;
-                
+                recordsTableBody.innerHTML = '';
+
                 if (data.length === 0) {
-                    recordsTableBody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500">目前尚無報名紀錄</td></tr>';
+                    recordsTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-5 py-16 text-center text-slate-400">
+                                <i class="ph ph-folder-open text-4xl mb-3 opacity-50"></i>
+                                <p>目前尚無報名紀錄</p>
+                            </td>
+                        </tr>
+                    `;
                     return;
                 }
 
-                recordsTableBody.innerHTML = '';
-                
                 data.forEach(record => {
                     const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-gray-50 transition-colors';
-                    
-                    const dateObj = new Date(record.timestamp);
-                    const formattedDate = !isNaN(dateObj) ? dateObj.toLocaleString('zh-TW', {
-                        year: 'numeric', month: '2-digit', day: '2-digit', 
-                        hour: '2-digit', minute: '2-digit'
-                    }) : 'N/A';
-
+                    tr.className = 'hover:bg-slate-50 transition-colors duration-150 group';
                     tr.innerHTML = `
-                        <td class="p-4 font-medium text-gray-900 whitespace-nowrap">${escapeHtml(record.fullName)}</td>
-                        <td class="p-4 whitespace-nowrap">
-                            <span class="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">${escapeHtml(record.department)}</span>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-500">${formatDate(record.timestamp)}</td>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-slate-800">${record.fullName}</td>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-600">
+                            <span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200 group-hover:bg-white transition-colors">${record.department}</span>
                         </td>
-                        <td class="p-4 whitespace-nowrap">${escapeHtml(record.employeeId)}</td>
-                        <td class="p-4">${escapeHtml(record.email)}</td>
-                        <td class="p-4 text-gray-500 text-xs whitespace-nowrap">${formattedDate}</td>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm font-mono text-slate-500">${record.employeeId}</td>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm text-indigo-600 hover:text-indigo-800"><a href="mailto:${record.email}">${record.email}</a></td>
                     `;
                     recordsTableBody.appendChild(tr);
                 });
             };
 
-            // Basic HTML escaping to prevent XSS in rendering
-            const escapeHtml = (unsafe) => {
-                return (unsafe || '').toString()
-                     .replace(/&/g, "&amp;")
-                     .replace(/</g, "&lt;")
-                     .replace(/>/g, "&gt;")
-                     .replace(/"/g, "&quot;")
-                     .replace(/'/g, "&#039;");
-            };
-
-            // CSV Download Logic
-            downloadCsvBtn.addEventListener('click', () => {
-                if (!registrationsData || registrationsData.length === 0) {
+            const downloadCSV = () => {
+                if (registrationsData.length === 0) {
                     showToast('目前沒有資料可供下載', 'error');
                     return;
                 }
 
-                try {
-                    const headers = ['姓名', '部門', '員工編號', 'Email', '報名時間'];
-                    const csvRows = [headers.join(',')];
+                const headers = ['報名時間', '姓名', '部門', '員工編號', 'Email'];
+                const csvRows = [];
+                csvRows.push(headers.join(','));
 
-                    registrationsData.forEach(row => {
-                        const dateObj = new Date(row.timestamp);
-                        const formattedDate = !isNaN(dateObj) ? dateObj.toLocaleString('zh-TW') : '';
-                        
-                        // Prevent potential CSV injection and wrap fields in quotes
-                        const values = [
-                            row.fullName,
-                            row.department,
-                            row.employeeId,
-                            row.email,
-                            formattedDate
-                        ].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`);
-                        
-                        csvRows.push(values.join(','));
-                    });
+                registrationsData.forEach(row => {
+                    const values = [
+                        formatDate(row.timestamp),
+                        `"${row.fullName}"`,
+                        `"${row.department}"`,
+                        `"${row.employeeId}"`,
+                        `"${row.email}"`
+                    ];
+                    csvRows.push(values.join(','));
+                });
 
-                    // Add BOM for correct UTF-8 rendering in Excel
-                    const csvContent = "\uFEFF" + csvRows.join('\n');
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    
-                    const link = document.createElement('a');
-                    link.setAttribute('href', url);
-                    link.setAttribute('download', `報名明細表_${new Date().toISOString().slice(0,10)}.csv`);
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    showToast('CSV 下載成功', 'success');
-                } catch(err) {
-                    console.error("CSV generation failed: ", err);
-                    showToast('CSV 下載失敗', 'error');
+                const BOM = '\uFEFF';
+                const csvString = BOM + csvRows.join('\n');
+                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `2026_員工聚餐報名名單_${new Date().getTime()}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // Event Listeners
+            verifyAdminBtn.addEventListener('click', verifyAdmin);
+            cancelAdminBtn.addEventListener('click', hideAdminModal);
+            adminIdInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') verifyAdmin();
+            });
+
+            tabFormBtn.addEventListener('click', () => switchTab(true));
+            tabRecordsBtn.addEventListener('click', () => {
+                if (isAdmin) {
+                    switchTab(false);
+                } else {
+                    showAdminModal();
                 }
             });
 
+            downloadCsvBtn.addEventListener('click', downloadCSV);
         });
     </script>
 </body>
