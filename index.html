@@ -223,11 +223,16 @@
         <!-- Toasts injected here -->
     </div>
 
-    <!-- Firebase Logic -->
+    <!-- Firebase / Google Sheets Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // 🌟 Google Sheets API 設定區 🌟
+        const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzsiNZ_UDUTE8zm62Dvbkii-jzHSI2pWM6OjyTMKOsGnQ1iy9HTU3Ck-EHFuYAjrZvA0g/exec'; 
+        // ==========================================
 
         document.addEventListener("DOMContentLoaded", async () => {
             // Environment Variables setup
@@ -343,6 +348,7 @@
                 });
             };
 
+            // Firebase Authentication (保留以防萬一，若純用 Google Sheets 可忽略)
             if (auth) {
                 try {
                     if (initialAuthToken) {
@@ -375,14 +381,34 @@
                 submitBtnText.textContent = '處理中...';
 
                 try {
-                    if (db && user) {
+                    // 檢查是否為正確的 Apps Script 網址
+                    if (GOOGLE_SHEETS_API_URL && GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
+                        // 【方案 A：寫入到 Google Sheets】
+                        // 加入 mode: 'no-cors'，避免 Google 重新導向時被瀏覽器 CORS 安全機制阻擋
+                        await fetch(GOOGLE_SHEETS_API_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            body: JSON.stringify(submitData)
+                        });
+                        
+                        // 由於 no-cors 模式無法讀取回傳值(response.json 會報錯)，我們直接視為發送成功
+                        registrationsData.push(submitData);
+                        registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        if(isAdmin) renderTable(registrationsData);
+
+                    } else if (db && user) {
+                        // 【方案 B：原本的 Firebase】
                         const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
                         await addDoc(registrationsRef, submitData);
                     } else {
-                        // Offline simulation
+                        // 離線模擬測試 (當沒有設定正確網址時)
+                        if (GOOGLE_SHEETS_API_URL && !GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
+                            showToast('尚未設定正確的 API 網址，已自動切換為本機模擬模式', 'error');
+                        }
                         await new Promise(resolve => setTimeout(resolve, 800));
                         registrationsData.push(submitData);
-                        renderTable(registrationsData); 
+                        registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        if(isAdmin) renderTable(registrationsData); 
                     }
                     
                     showToast('🎉 報名成功！期待您的參與！');
@@ -432,27 +458,45 @@
             };
 
             function initRealTimeTracking() {
-                if (!db || !user) {
-                    renderTable([
-                        { fullName: '王大明', department: '資訊部 (IT)', employeeId: 'EMP001', email: 'daming@company.com', timestamp: new Date().toISOString() },
-                        { fullName: '林小美', department: '人資部', employeeId: 'EMP002', email: 'xiaomei@company.com', timestamp: new Date(Date.now() - 3600000).toISOString() }
-                    ]);
-                    return;
-                }
-                
-                const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
-                onSnapshot(registrationsRef, (snapshot) => {
-                    registrationsData = [];
-                    snapshot.forEach((doc) => {
-                        registrationsData.push({ id: doc.id, ...doc.data() });
+                // 檢查是否為正確的 Apps Script 網址
+                if (GOOGLE_SHEETS_API_URL && GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
+                    // 若有設定 Google Sheets URL，則從試算表抓取名單
+                    fetch(GOOGLE_SHEETS_API_URL)
+                        .then(response => {
+                            if (!response.ok) throw new Error('連線異常');
+                            return response.json();
+                        })
+                        .then(data => {
+                            registrationsData = data;
+                            registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                            renderTable(registrationsData);
+                        })
+                        .catch(error => {
+                            console.error("Google Sheets fetch error:", error);
+                            showToast('無法取得名單，請確認 Apps Script 權限為「所有人」', 'error');
+                            // 失敗時也要重新渲染，清掉「載入中」的畫面，顯示已抓取到的暫存資料
+                            renderTable(registrationsData);
+                        });
+                } else if (db && user) {
+                    // 備用：原本的 Firebase 監聽邏輯
+                    const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
+                    onSnapshot(registrationsRef, (snapshot) => {
+                        registrationsData = [];
+                        snapshot.forEach(doc => {
+                            registrationsData.push(doc.data());
+                        });
+                        registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        renderTable(registrationsData);
+                    }, (error) => {
+                        console.error("Real-time tracking error:", error);
+                        showToast('無法取得最新名單', 'error');
                     });
-                    
-                    registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                } else {
+                    if (GOOGLE_SHEETS_API_URL && !GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
+                        showToast('未設定正確 API，顯示本機暫存資料', 'error');
+                    }
                     renderTable(registrationsData);
-                }, (error) => {
-                    console.error("Real-time tracking error:", error);
-                    showToast('無法取得最新名單', 'error');
-                });
+                }
             }
 
             const renderTable = (data) => {
@@ -474,8 +518,12 @@
                 data.forEach(record => {
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 transition-colors duration-150 group';
+                    
+                    // 處理可能來自 Google Sheets (格式可能稍有不同) 或 Firebase 的日期
+                    const dateStr = record.timestamp.includes('T') ? formatDate(record.timestamp) : record.timestamp;
+
                     tr.innerHTML = `
-                        <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-500">${formatDate(record.timestamp)}</td>
+                        <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-500">${dateStr}</td>
                         <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-slate-800">${record.fullName}</td>
                         <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-600">
                             <span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200 group-hover:bg-white transition-colors">${record.department}</span>
