@@ -156,10 +156,16 @@
                     </h2>
                     <p class="text-sm text-slate-500 mt-1">目前共 <span id="totalCount" class="font-bold text-indigo-600 px-1">0</span> 人完成報名</p>
                 </div>
-                <button id="downloadCsvBtn" class="px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 border border-emerald-200">
-                    <i class="ph ph-download-simple text-lg"></i>
-                    匯出 CSV
-                </button>
+                <div class="flex gap-2 sm:gap-3">
+                    <button id="refreshDataBtn" class="px-3 sm:px-4 py-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 border border-indigo-200">
+                        <i id="refreshIcon" class="ph ph-arrows-clockwise text-lg"></i>
+                        <span class="hidden sm:inline">同步最新資料</span>
+                    </button>
+                    <button id="downloadCsvBtn" class="px-3 sm:px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 border border-emerald-200">
+                        <i class="ph ph-download-simple text-lg"></i>
+                        <span class="hidden sm:inline">匯出 CSV</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Beautiful Table -->
@@ -269,6 +275,8 @@
             const recordsTableBody = document.getElementById('recordsTableBody');
             const totalCount = document.getElementById('totalCount');
             const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+            const refreshDataBtn = document.getElementById('refreshDataBtn');
+            const refreshIcon = document.getElementById('refreshIcon');
             
             // Admin Modal Elements
             const adminModal = document.getElementById('adminModal');
@@ -348,21 +356,35 @@
                 });
             };
 
-            // Firebase Authentication (保留以防萬一，若純用 Google Sheets 可忽略)
-            if (auth) {
-                try {
-                    if (initialAuthToken) {
-                        const userCredential = await signInWithCustomToken(auth, initialAuthToken);
-                        user = userCredential.user;
-                    } else {
-                        const userCredential = await signInAnonymously(auth);
-                        user = userCredential.user;
-                    }
-                } catch (error) {
-                    console.error("Firebase authentication failed:", error);
-                    showToast('系統連線異常，請稍後再試。', 'error');
+            // 🌟 雙向同步：從 Google Sheets 抓取最新資料 🌟
+            const syncWithGoogleSheets = async () => {
+                if (!GOOGLE_SHEETS_API_URL || !GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
+                    showToast('未設定正確 API，目前顯示本機暫存資料', 'error');
+                    renderTable(registrationsData);
+                    return;
                 }
-            }
+
+                try {
+                    refreshIcon.classList.add('animate-spin');
+                    recordsTableBody.innerHTML = `<tr><td colspan="5" class="px-5 py-10 text-center text-slate-400"><i class="ph ph-spinner-gap animate-spin text-2xl mb-2"></i><br>正在從 Google 試算表同步資料...</td></tr>`;
+                    
+                    const response = await fetch(GOOGLE_SHEETS_API_URL);
+                    if (!response.ok) throw new Error('網路連線異常');
+                    
+                    const data = await response.json();
+                    registrationsData = data;
+                    // 依據時間由新到舊排序
+                    registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    renderTable(registrationsData);
+                    
+                } catch (error) {
+                    console.error("Google Sheets fetch error:", error);
+                    showToast('同步失敗，請確認 Apps Script 權限是否設為「所有人」', 'error');
+                    renderTable(registrationsData); // 失敗則顯示舊資料
+                } finally {
+                    setTimeout(() => refreshIcon.classList.remove('animate-spin'), 500);
+                }
+            };
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -381,30 +403,29 @@
                 submitBtnText.textContent = '處理中...';
 
                 try {
-                    // 檢查是否為正確的 Apps Script 網址
                     if (GOOGLE_SHEETS_API_URL && GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
                         // 【方案 A：寫入到 Google Sheets】
-                        // 加入 mode: 'no-cors'，避免 Google 重新導向時被瀏覽器 CORS 安全機制阻擋
+                        // 使用 text/plain 避免 CORS preflight 阻擋
                         await fetch(GOOGLE_SHEETS_API_URL, {
                             method: 'POST',
                             mode: 'no-cors',
+                            headers: {
+                                'Content-Type': 'text/plain;charset=utf-8',
+                            },
                             body: JSON.stringify(submitData)
                         });
                         
-                        // 由於 no-cors 模式無法讀取回傳值(response.json 會報錯)，我們直接視為發送成功
+                        // 先將資料推入本地陣列讓畫面提早反應
                         registrationsData.push(submitData);
-                        registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                        if(isAdmin) renderTable(registrationsData);
-
-                    } else if (db && user) {
-                        // 【方案 B：原本的 Firebase】
-                        const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
-                        await addDoc(registrationsRef, submitData);
-                    } else {
-                        // 離線模擬測試 (當沒有設定正確網址時)
-                        if (GOOGLE_SHEETS_API_URL && !GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
-                            showToast('尚未設定正確的 API 網址，已自動切換為本機模擬模式', 'error');
+                        
+                        // 若管理員已登入，則在背景延遲 1.5 秒後重新從試算表抓取 (確保資料已完全寫入)
+                        if(isAdmin) {
+                            setTimeout(() => {
+                                syncWithGoogleSheets();
+                            }, 1500);
                         }
+                    } else {
+                        // 離線模擬模式
                         await new Promise(resolve => setTimeout(resolve, 800));
                         registrationsData.push(submitData);
                         registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -458,43 +479,11 @@
             };
 
             function initRealTimeTracking() {
-                // 檢查是否為正確的 Apps Script 網址
                 if (GOOGLE_SHEETS_API_URL && GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
-                    // 若有設定 Google Sheets URL，則從試算表抓取名單
-                    fetch(GOOGLE_SHEETS_API_URL)
-                        .then(response => {
-                            if (!response.ok) throw new Error('連線異常');
-                            return response.json();
-                        })
-                        .then(data => {
-                            registrationsData = data;
-                            registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                            renderTable(registrationsData);
-                        })
-                        .catch(error => {
-                            console.error("Google Sheets fetch error:", error);
-                            showToast('無法取得名單，請確認 Apps Script 權限為「所有人」', 'error');
-                            // 失敗時也要重新渲染，清掉「載入中」的畫面，顯示已抓取到的暫存資料
-                            renderTable(registrationsData);
-                        });
-                } else if (db && user) {
-                    // 備用：原本的 Firebase 監聽邏輯
-                    const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
-                    onSnapshot(registrationsRef, (snapshot) => {
-                        registrationsData = [];
-                        snapshot.forEach(doc => {
-                            registrationsData.push(doc.data());
-                        });
-                        registrationsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                        renderTable(registrationsData);
-                    }, (error) => {
-                        console.error("Real-time tracking error:", error);
-                        showToast('無法取得最新名單', 'error');
-                    });
+                    // 呼叫雙向同步函式
+                    syncWithGoogleSheets();
                 } else {
-                    if (GOOGLE_SHEETS_API_URL && !GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/')) {
-                        showToast('未設定正確 API，顯示本機暫存資料', 'error');
-                    }
+                    showToast('未設定正確 API，顯示本機暫存資料', 'error');
                     renderTable(registrationsData);
                 }
             }
@@ -581,12 +570,17 @@
             tabRecordsBtn.addEventListener('click', () => {
                 if (isAdmin) {
                     switchTab(false);
+                    syncWithGoogleSheets(); // 每次切換到名單頁面，自動同步一次
                 } else {
                     showAdminModal();
                 }
             });
 
             downloadCsvBtn.addEventListener('click', downloadCSV);
+            refreshDataBtn.addEventListener('click', () => {
+                syncWithGoogleSheets();
+                showToast('已與 Google 試算表同步完成！');
+            });
         });
     </script>
 </body>
